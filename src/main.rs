@@ -3,6 +3,8 @@ use std::io::Write;
 
 use anyhow::Context;
 use anyhow::Result;
+use atomicwrites::AtomicFile;
+use atomicwrites::OverwriteBehavior::AllowOverwrite;
 use byteorder::ByteOrder;
 use byteorder::LittleEndian;
 use byteorder::ReadBytesExt;
@@ -43,7 +45,6 @@ fn main() -> Result<()> {
     let input_metadata = input_file
         .metadata()
         .with_context(|| "Failed to get input file metadata")?;
-    drop(input_file);
     let elf = Elf::parse(&elf_bytes).with_context(|| "Failed to parse ELF")?;
     let dynamic_phdr = elf
         .program_headers
@@ -90,13 +91,13 @@ fn main() -> Result<()> {
         LittleEndian::write_u64(&mut region[8..16], d.d_val);
         region = &mut region[16..];
     }
-    let mut output_file =
-        File::create(&opt.output).with_context(|| "Failed to open output file")?;
+    let output_file = AtomicFile::new(&opt.output, AllowOverwrite);
     output_file
-        .set_permissions(input_metadata.permissions())
-        .with_context(|| "Failed to set output file permissions")?;
-    output_file
-        .write_all(&output)
+        .write::<_, std::io::Error, _>(|file| {
+            file.write_all(&output)?;
+            file.set_permissions(input_metadata.permissions())?;
+            Ok(())
+        })
         .with_context(|| "Failed to write output file")?;
     Ok(())
 }
