@@ -1,0 +1,40 @@
+name: build
+on:
+- push
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - name: cargo-deb
+        run: cargo install cargo-deb
+      - name: Build
+        run: cargo deb
+      - name: Upload
+        uses: actions/upload-artifact@v3
+        with:
+          name: deb
+          path: target/debian/*.deb
+  release:
+    name: Release
+    needs:
+    - build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/download-artifact@v2
+      with:
+        name: deb
+        path: ./dist/deb
+      - uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/deb/*.deb
