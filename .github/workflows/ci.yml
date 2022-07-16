@@ -34,7 +34,7 @@ jobs:
       with:
         name: deb
         path: ./dist/deb
-      - uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            dist/deb/*.deb
+    - uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          dist/deb/*.deb
